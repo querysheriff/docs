@@ -4,10 +4,18 @@
 
 ### Collector
 
+The collector runs on the PostgreSQL host as a Debian package managed by `systemd`. Supported: Debian 11–13, amd64, PostgreSQL 15–18.
+
+#### 1. Prepare PostgreSQL
+
+Create the monitoring role:
+
 ```sql
 CREATE USER pgdozor_collector WITH PASSWORD 'CHANGE_ME' CONNECTION LIMIT 5;
 GRANT pg_monitor TO pgdozor_collector;
 ```
+
+Configure `postgresql.conf`:
 
 ```
 # postgresql.conf
@@ -38,13 +46,7 @@ auto_explain.log_verbose = on
 auto_explain.sample_rate = 0.5
 ```
 
-give pgdozor-collector user permission to read and delete postgres log files:
-
-```
-usermod -aG adm pgdozor-collector // read access to log files
-chmod -t /var/log/postgresql // remove sticky bit so pgdozor-collector can delete files in this directory
-usermod -aG postgres pgdozor-collector // remove access to log files
-```
+`shared_preload_libraries` needs a restart; then create the extension:
 
 ```
 systemctl restart postgresql
@@ -52,6 +54,67 @@ systemctl restart postgresql
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+```
+
+Log permissions should be handled by the package:
+
+- The collector is added to the `postgres` group, so it can **read** the jsonlogs.
+- The systemd unit holds the `CAP_FOWNER` capability, so it can **delete** rotated jsonlogs.
+
+#### 2. Install the collector
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/pgdozor/collector/master/scripts/install.sh | sudo sh
+```
+
+This installs the latest `.deb` from GitHub Releases and sets up:
+
+- the binary at `/usr/bin/pgdozor-collector`,
+- a dedicated `pgdozor-collector` system user (added to the `postgres` group),
+- the systemd unit `pgdozor-collector.service` (enabled to start on boot),
+- a config seeded at `/etc/pgdozor-collector.yml` (`root:pgdozor-collector`, `0640`).
+
+Pin a version with `VERSION=1.2.3 curl … | sudo sh`.
+
+#### 3. Configure the service
+
+Edit `/etc/pgdozor-collector.yml` — set the backend URL, the collector token, and
+the Postgres DSN (see `/etc/pgdozor-collector.yml.example` for the full schema):
+
+```yaml
+backend:
+  url: https://backend.example.com:3000
+  token: pgdc_CHANGE_ME
+
+postgres: postgresql://pgdozor_collector@localhost:5432/postgres
+
+logs:
+  path: /var/log/postgresql
+  delete_rotated: true
+```
+
+The config is `root:pgdozor-collector 0640` — it holds the token and DB password,
+so keep it out of world-readable reach.
+
+#### 4. Start and verify
+
+```sh
+sudo systemctl start pgdozor-collector
+systemctl status pgdozor-collector
+journalctl -u pgdozor-collector -f
+```
+
+A healthy start logs `pgdozor collector started` with the detected Postgres
+version. Apply config changes with `systemctl restart pgdozor-collector`.
+
+#### Upgrade / uninstall
+
+```sh
+# upgrade: re-run the installer — it pulls the newest release; your config is kept
+curl -fsSL https://raw.githubusercontent.com/pgdozor/collector/main/scripts/install.sh | sudo sh
+
+sudo apt-get remove pgdozor-collector   # keep config and state
+sudo apt-get purge  pgdozor-collector   # also remove config, state, and the user
 ```
 
 ### Backend
