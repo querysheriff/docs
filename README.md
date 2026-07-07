@@ -56,6 +56,12 @@ systemctl restart postgresql
 CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
 ```
 
+Verify the configuration is complete:
+
+```sh
+psql -X -P pager=off "postgresql://postgres:PASSWORD@HOST:5432/postgres" -f check-postgres-config.sql
+```
+
 Log permissions should be handled by the package:
 
 - The collector is added to the `postgres` group, so it can **read** the jsonlogs.
