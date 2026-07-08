@@ -1,0 +1,83 @@
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  registry: ghcr.io/pgdozor
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+backend:
+  image:
+    repository: backend
+    tag: ""
+  replicas: 1
+
+  # The backend's OWN Postgres store connection. Provide ONE of:
+  #   databaseUrl   — a literal DSN (stored in a chart-managed Secret), or
+  #   existingSecret — the name of a pre-existing Secret holding the DSN.
+  databaseUrl: ""
+  existingSecret: ""
+  existingSecretKey: DATABASE_URL
+
+  # Empty derives the value from the ingress origin (recommended, single-host mode).
+  corsAllowedOrigins: ""
+  cookieSecure: true
+  retentionDays: 30
+
+  resources: {}
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+frontend:
+  image:
+    repository: frontend
+    tag: ""
+  replicas: 1
+
+  # Empty derives the value from the ingress origin (recommended, single-host mode).
+  # The browser calls this URL directly, so it must be reachable from clients.
+  publicApiUrl: ""
+
+  resources: {}
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+migrations:
+  enabled: true
+
+ingress:
+  enabled: true
+  className: ""
+  annotations: {}
+  host: pgdozor.local
+
+  # Single-host mode routes these Connect service prefixes to the backend; every
+  # other path goes to the frontend. Adjust only if the proto service set changes.
+  rpcServices:
+    - ActivityService
+    - StatementService
+    - LogService
+    - HealthService
+    - AuthService
+    - AdminService
+    - AlertService
+
+  # Dual-host mode serves the app on `host` and the API on `apiHost`. The two
+  # MUST share one registrable domain (subdomains) or the SameSite=Lax session
+  # cookie will not flow from app to API.
+  dualHost:
+    enabled: false
+    apiHost: ""
+
+  tls:
+    enabled: false
+    secretName: ""

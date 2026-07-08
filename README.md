@@ -123,6 +123,77 @@ sudo apt-get remove pgdozor-collector   # keep config and state
 sudo apt-get purge  pgdozor-collector   # also remove config, state, and the user
 ```
 
-### Backend
+### Backend & Frontend (Kubernetes)
 
-### Frontend
+The backend and frontend deploy together to Kubernetes via one Helm chart
+(`deploy/helm/pgdozor`). Prebuilt multi-arch images are published to GHCR
+(`ghcr.io/pgdozor/backend`, `ghcr.io/pgdozor/frontend`), so no local build is
+needed.
+
+#### Prerequisites
+
+- A Kubernetes cluster with an ingress controller (e.g. ingress-nginx).
+- An **empty** PostgreSQL database for the backend's own store, reachable from the
+  cluster. Its role must be able to `CREATE` tables and partitions. This is
+  **separate** from the databases being monitored.
+- A DNS record pointing at the ingress, and (recommended) TLS — cert-manager or a
+  pre-created TLS secret.
+
+#### 1. Install
+
+Single-host mode (recommended): the dashboard and the Connect API share one
+origin, so there is no CORS to configure and the session cookie flows cleanly.
+
+```sh
+helm install pgdozor ./deploy/helm/pgdozor \
+  --set ingress.host=pgdozor.example.com \
+  --set ingress.className=nginx \
+  --set ingress.tls.enabled=true \
+  --set ingress.annotations."cert-manager\.io/cluster-issuer"=letsencrypt-prod \
+  --set backend.databaseUrl='postgres://pgdozor:PASS@db-host:5432/pgdozor?sslmode=require'
+```
+
+Prefer a pre-created Secret over an inline DSN in production:
+
+```sh
+kubectl create secret generic pgdozor-db --from-literal=DATABASE_URL='postgres://…'
+helm install pgdozor ./deploy/helm/pgdozor \
+  --set ingress.host=pgdozor.example.com --set ingress.tls.enabled=true \
+  --set backend.existingSecret=pgdozor-db
+```
+
+Or copy `deploy/helm/pgdozor/values.example.yaml`, edit it, and
+`helm install pgdozor ./deploy/helm/pgdozor -f my-values.yaml`.
+
+Schema migrations run automatically as an init container (goose, embedded in the
+backend image) before the backend starts — no manual migrate step.
+
+#### 2. First login and collectors
+
+- Open `https://<host>` and log in. The **first** successful login bootstraps the
+  super admin (choose the email + password).
+- As super admin, go to **Admin → Collectors** and create a collector token. Give
+  each collector its `pgdc_` token and point `backend.url` at
+  `https://<host>` (single-host) — the collector setup above covers the rest.
+
+#### 3. Upgrade
+
+```sh
+helm upgrade pgdozor ./deploy/helm/pgdozor -f my-values.yaml
+```
+
+Pin `backend.image.tag` / `frontend.image.tag` to a released version in
+production rather than relying on the chart default.
+
+#### Ingress topology
+
+- **Single-host (default):** one hostname; Connect service paths
+  (`/pgdozor.v1.*`) route to the backend, everything else to the frontend.
+  `PUBLIC_API_URL` and `CORS_ALLOWED_ORIGINS` are derived automatically.
+- **Dual-host:** set `ingress.dualHost.enabled=true` and
+  `ingress.dualHost.apiHost=api.pgdozor.example.com`. The app host and API host
+  **must share one registrable domain** (subdomains) — otherwise the `SameSite=Lax`
+  session cookie will not flow from the dashboard to the API.
+
+The frontend reads `PUBLIC_API_URL` at **runtime** (adapter-node), so the backend
+URL is set at deploy time via the chart — no image rebuild to re-point it.

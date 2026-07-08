@@ -1,0 +1,38 @@
+pgdozor {{ .Chart.AppVersion }} deployed as release "{{ .Release.Name }}".
+
+Backend image:  {{ include "pgdozor.backendImage" . }}
+Frontend image: {{ include "pgdozor.frontendImage" . }}
+
+{{- if .Values.ingress.enabled }}
+
+Dashboard URL:  {{ include "pgdozor.appOrigin" . }}
+Backend API:    {{ include "pgdozor.apiOrigin" . }}
+{{- if not .Values.ingress.tls.enabled }}
+
+NOTE: ingress.tls.enabled is false — you are serving over plain HTTP. Because
+backend.cookieSecure defaults to true, the session cookie will NOT be set over
+HTTP. Enable TLS, or set backend.cookieSecure=false for local/testing only.
+{{- end }}
+{{- else }}
+
+Ingress is disabled. Reach the services in-cluster:
+  Frontend: {{ include "pgdozor.fullname" . }}-frontend:3000
+  Backend:  {{ include "pgdozor.fullname" . }}-backend:3000
+{{- end }}
+
+First steps:
+  1. Open the dashboard and log in — the FIRST successful login bootstraps the
+     super admin account (email + password you choose).
+  2. As super admin, create a collector token (Admin → Collectors). Configure
+     each collector with its `pgdc_` token and point it at the backend API URL.
+
+{{- if .Values.migrations.enabled }}
+
+Schema migrations run automatically as an init container before the backend
+starts (goose, embedded in the backend image). Point DATABASE_URL at an EMPTY
+database; the role needs privileges to CREATE tables and partitions.
+{{- else }}
+
+migrations.enabled is false — apply the schema yourself before the backend
+serves traffic (run the `pgdozor-migrate` binary against DATABASE_URL).
+{{- end }}

@@ -1,0 +1,10 @@
+apiVersion: v2
+name: pgdozor
+description: PostgreSQL performance monitoring — backend ingest/store/serve + dashboard frontend
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+home: https://github.com/pgdozor
+sources:
+  - https://github.com/pgdozor/backend
+  - https://github.com/pgdozor/frontend
