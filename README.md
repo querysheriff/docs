@@ -62,7 +62,7 @@ Verify the configuration is complete:
 psql -X -P pager=off "postgresql://postgres:PASSWORD@HOST:5432/postgres" -f check-postgres-config.sql
 ```
 
-Log permissions should be handled by the package:
+Log permissions should be handled by the collector package:
 
 - The collector is added to the `postgres` group, so it can **read** the jsonlogs.
 - The systemd unit holds the `CAP_FOWNER` capability, so it can **delete** rotated jsonlogs.
@@ -84,8 +84,7 @@ Pin a version with `VERSION=1.2.3 curl … | sudo sh`.
 
 #### 3. Configure the service
 
-Edit `/etc/pgdozor-collector.yml` — set the backend URL, the collector token, and
-the Postgres DSN (see `/etc/pgdozor-collector.yml.example` for the full schema):
+Edit `/etc/pgdozor-collector.yml` — set the backend URL, the collector token, and the Postgres DSN (see `/etc/pgdozor-collector.yml.example` for the full schema):
 
 ```yaml
 backend:
@@ -99,8 +98,7 @@ logs:
   delete_rotated: true
 ```
 
-The config is `root:pgdozor-collector 0640` — it holds the token and DB password,
-so keep it out of world-readable reach.
+The config is `root:pgdozor-collector 0640` — it holds the token and DB password, so keep it out of world-readable reach.
 
 #### 4. Start and verify
 
@@ -110,8 +108,7 @@ systemctl status pgdozor-collector
 journalctl -u pgdozor-collector -f
 ```
 
-A healthy start logs `pgdozor collector started` with the detected Postgres
-version. Apply config changes with `systemctl restart pgdozor-collector`.
+A healthy start logs `pgdozor collector started` with the detected Postgres version. Apply config changes with `systemctl restart pgdozor-collector`.
 
 #### Upgrade / uninstall
 
@@ -125,80 +122,34 @@ sudo apt-get purge  pgdozor-collector   # also remove config, state, and the use
 
 ### Backend & Frontend (Kubernetes)
 
-The backend and frontend deploy together to Kubernetes via one Helm chart
-(`deploy/helm/pgdozor`). Prebuilt multi-arch images are published to GHCR
-(`ghcr.io/pgdozor/backend`, `ghcr.io/pgdozor/frontend`), so no local build is
-needed.
+The backend and frontend deploy together to Kubernetes via one Helm chart (`deploy/helm/pgdozor`). Prebuilt multi-arch images are published to GHCR (`ghcr.io/pgdozor/backend`, `ghcr.io/pgdozor/frontend`), so no local build is needed.
 
 #### Prerequisites
 
 - A Kubernetes cluster with an ingress controller (e.g. ingress-nginx).
-- An **empty** PostgreSQL database for the backend's own store, reachable from the
-  cluster. Its role must be able to `CREATE` tables and partitions. This is
-  **separate** from the databases being monitored.
-- A DNS record pointing at the ingress, and (recommended) TLS — cert-manager or a
-  pre-created TLS secret.
+- An **empty** PostgreSQL database for the backend's own storage, reachable from the cluster. This is **separate** from the databases being monitored.
+- A DNS record pointing at the ingress, and TLS — cert-manager or a pre-created TLS secret.
 
 #### 1. Install
 
-The dashboard and the Connect API share one hostname: `/api` routes to the
-backend, everything else to the frontend. One origin means no CORS to configure
-and the session cookie flows cleanly.
+The dashboard and the Connect API share one hostname: `/api` routes to the backend, everything else to the frontend.
 
 ```sh
-helm install pgdozor ./deploy/helm/pgdozor \
-  --set ingress.host=pgdozor.example.com \
-  --set ingress.className=nginx \
-  --set ingress.tls.enabled=true \
-  --set ingress.annotations."cert-manager\.io/cluster-issuer"=letsencrypt-prod \
-  --set secret.values.DATABASE_URL='postgres://pgdozor:PASS@db-host:5432/pgdozor?sslmode=require'
+helm install pgdozor ./deploy/helm/pgdozor -n pgdozor -f my-values.yaml
 ```
 
-Prefer a pre-created Secret over an inline DSN in production:
-
-```sh
-kubectl create secret generic pgdozor-db --from-literal=DATABASE_URL='postgres://…'
-helm install pgdozor ./deploy/helm/pgdozor \
-  --set ingress.host=pgdozor.example.com --set ingress.tls.enabled=true \
-  --set secret.create=false --set secret.name=pgdozor-db
-```
-
-Or copy `deploy/helm/pgdozor/values.example.yaml`, edit it, and
-`helm install pgdozor ./deploy/helm/pgdozor -f my-values.yaml`.
-
-Schema migrations run automatically as an init container (goose, embedded in the
-backend image) before the backend starts — no manual migrate step.
+Schema migrations run automatically as an init container (goose, embedded in the backend image) before the backend starts.
 
 #### 2. First login and collectors
 
-- Open `https://<host>` and log in. The **first** successful login bootstraps the
-  super admin (choose the email + password).
-- As super admin, go to **Admin → Collectors** and create a collector token. Give
-  each collector its `pgdc_` token and point `backend.url` at `https://<host>/api`
-  — the collector setup above covers the rest.
+- Open `https://<host>` and log in. The **first** login bootstraps the super admin (choose the email + password).
+- As super admin, go to **Admin -> Collectors** and create a collector token. Give each collector its `pgdc_` token and point `backend.url` at `https://<host>/api` — the collector setup above covers the rest.
 
 #### 3. Upgrade
 
 ```sh
-helm upgrade pgdozor ./deploy/helm/pgdozor -f my-values.yaml
+helm upgrade pgdozor ./deploy/helm/pgdozor -n pgdozor -f my-values.yaml
 ```
 
-Pin `backend.image.tag` / `frontend.image.tag` to a released version in
-production rather than relying on the chart default.
+Pin `backend.image.tag` / `frontend.image.tag` to a released version in production rather than relying on the chart default.
 
-#### Ingress topology
-
-Everything is served from the single `ingress.host`, via exactly two path rules:
-
-| Path   | Goes to  |
-| ------ | -------- |
-| `/api` | backend  |
-| `/`    | frontend |
-
-The backend mounts every Connect service under `/api`, so this holds no matter
-which services the proto declares — adding an RPC service never touches the chart.
-Because the dashboard and the API share an origin, the browser makes no
-cross-origin requests: the frontend calls `/api` relatively (no `PUBLIC_API_URL`
-needed) and the `SameSite=Lax` session cookie flows on its own.
-`CORS_ALLOWED_ORIGINS` is still set from `ingress.host` for the benefit of
-non-browser clients.
