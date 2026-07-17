@@ -27,26 +27,15 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- define "pgdozor.labels" -}}
 helm.sh/chart: {{ include "pgdozor.chart" . }}
 {{ include "pgdozor.selectorLabels" . }}
-{{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
-{{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end -}}
 
-{{- define "pgdozor.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create -}}
-{{- default (include "pgdozor.fullname" .) .Values.serviceAccount.name -}}
-{{- else -}}
-{{- default "default" .Values.serviceAccount.name -}}
-{{- end -}}
-{{- end -}}
-
 {{- define "pgdozor.backendImage" -}}
-{{- printf "%s/%s:%s" .Values.image.registry .Values.backend.image.repository (.Values.backend.image.tag | default .Chart.AppVersion) -}}
+{{- printf "%s/%s:%s" .Values.image.registry .Values.backend.image.repository (required "backend.image.tag is required" .Values.backend.image.tag) -}}
 {{- end -}}
 
 {{- define "pgdozor.frontendImage" -}}
-{{- printf "%s/%s:%s" .Values.image.registry .Values.frontend.image.repository (.Values.frontend.image.tag | default .Chart.AppVersion) -}}
+{{- printf "%s/%s:%s" .Values.image.registry .Values.frontend.image.repository (required "frontend.image.tag is required" .Values.frontend.image.tag) -}}
 {{- end -}}
 
 {{- define "pgdozor.secretName" -}}

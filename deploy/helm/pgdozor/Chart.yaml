@@ -1,7 +1,6 @@
 apiVersion: v2
 name: pgdozor
 version: 0.0.1
-appVersion: "0.0.1"
 type: application
 description: pgdozor backend and frontend
 home: https://github.com/pgdozor

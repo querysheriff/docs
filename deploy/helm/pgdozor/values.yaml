@@ -13,28 +13,20 @@ image:
   # -- Image pull secrets for a private registry.
   pullSecrets: []
 
-serviceAccount:
-  # -- Specifies whether a service account should be created.
-  create: true
-  # -- The name of the service account to use.
-  name: ""
-  # -- Annotations to add to the service account.
-  annotations: {}
-
 secret:
   # -- Specifies whether a secret should be created.
   create: true
   # -- The name of the secret to load environment variables from.
   name: ""
-  # -- Values to initialize the Secret with.
+  # -- Values to initialize the Secret with. DATABASE_URL is required by the backend.
   values: {}
-  #   DATABASE_URL: backend_postgres_url
+  #   DATABASE_URL: postgresql://user:password@host:5432/pgdozor
 
 backend:
   image:
     # -- Backend image repository, appended to image.registry.
     repository: backend
-    # -- Backend image tag. Empty uses the chart appVersion.
+    # -- Backend image tag. Required; backend and frontend release independently.
     tag: ""
   # -- Number of backend replicas.
   replicas: 1
@@ -62,7 +54,7 @@ frontend:
   image:
     # -- Frontend image repository, appended to image.registry.
     repository: frontend
-    # -- Frontend image tag. Empty uses the chart appVersion.
+    # -- Frontend image tag. Required; backend and frontend release independently.
     tag: ""
   # -- Number of frontend replicas.
   replicas: 1

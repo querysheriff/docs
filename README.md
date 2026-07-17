@@ -128,7 +128,7 @@ The backend and frontend deploy together to Kubernetes via one Helm chart (`depl
 
 - A Kubernetes cluster with an ingress controller (e.g. ingress-nginx).
 - An **empty** PostgreSQL database for the backend's own storage, reachable from the cluster. This is **separate** from the databases being monitored.
-- A DNS record pointing at the ingress, and TLS — cert-manager or a pre-created TLS secret.
+- A DNS record pointing at the ingress, and TLS.
 
 #### 1. Install
 
@@ -151,5 +151,5 @@ Schema migrations run automatically as an init container (goose, embedded in the
 helm upgrade pgdozor ./deploy/helm/pgdozor -n pgdozor -f my-values.yaml
 ```
 
-Pin `backend.image.tag` / `frontend.image.tag` to a released version in production rather than relying on the chart default.
+Bump `backend.image.tag` / `frontend.image.tag` to the released versions you want. The two release independently, so they are set separately and neither has a default.
 

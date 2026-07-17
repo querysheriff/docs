@@ -1,4 +1,4 @@
-pgdozor {{ .Chart.AppVersion }} deployed as release "{{ .Release.Name }}".
+pgdozor deployed as release "{{ .Release.Name }}".
 
 Backend image:  {{ include "pgdozor.backendImage" . }}
 Frontend image: {{ include "pgdozor.frontendImage" . }}
