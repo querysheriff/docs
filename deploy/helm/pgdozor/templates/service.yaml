@@ -1,0 +1,19 @@
+{{- range $component := list "backend" "frontend" }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "pgdozor.fullname" $ }}-{{ $component }}
+  labels:
+    {{- include "pgdozor.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "pgdozor.selectorLabels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http
+{{- end }}

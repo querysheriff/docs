@@ -13,11 +13,11 @@ spec:
   {{- with .Values.ingress.className }}
   ingressClassName: {{ . }}
   {{- end }}
-  {{- if .Values.ingress.tls.enabled }}
+  {{- with .Values.ingress.tls.secretName }}
   tls:
     - hosts:
-        - {{ .Values.ingress.host | quote }}
-      secretName: {{ .Values.ingress.tls.secretName | default (printf "%s-tls" $fullname) }}
+        - {{ $.Values.ingress.host | quote }}
+      secretName: {{ . }}
   {{- end }}
   rules:
     - host: {{ required "ingress.host is required" .Values.ingress.host | quote }}
@@ -29,11 +29,11 @@ spec:
               service:
                 name: {{ $fullname }}-backend
                 port:
-                  number: 3000
+                  name: http
           - path: /
             pathType: Prefix
             backend:
               service:
                 name: {{ $fullname }}-frontend
                 port:
-                  number: 3000
+                  name: http

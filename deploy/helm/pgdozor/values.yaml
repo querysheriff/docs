@@ -39,13 +39,16 @@ backend:
   # -- Number of backend replicas.
   replicas: 1
 
-  # -- Send the session cookie only over HTTPS. Keep true unless testing over plain HTTP.
-  cookieSecure: true
   # -- Days of monitoring data to retain before pruning.
   retentionDays: 30
 
   # -- CPU/memory requests and limits for the backend container.
-  resources: {}
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
   # -- Annotations added to backend pods.
   podAnnotations: {}
   # -- Node selector for scheduling backend pods.
@@ -65,7 +68,12 @@ frontend:
   replicas: 1
 
   # -- CPU/memory requests and limits for the frontend container.
-  resources: {}
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
   # -- Annotations added to frontend pods.
   podAnnotations: {}
   # -- Node selector for scheduling frontend pods.
@@ -80,15 +88,17 @@ migrations:
   enabled: true
 
 ingress:
-  # -- Public hostname serving the dashboard and, under /api, the Connect API.
-  host: pgdozor.local
+  # -- Public hostname serving the dashboard and, under /api, the Connect API. Required.
+  host: ""
   # -- IngressClass name (e.g. nginx). Empty uses the cluster default.
   className: ""
   # -- Annotations added to the Ingress (e.g. cert-manager issuer).
   annotations: {}
 
   tls:
-    # -- Serve the ingress over HTTPS.
-    enabled: false
-    # -- Name of the TLS Secret. Empty defaults to <fullname>-tls.
+    # -- The site is served over HTTPS. Drives the URL scheme (dashboard, API, CORS)
+    # and the secure session cookie. Turn off only for plain-HTTP testing.
+    enabled: true
+    # -- Terminate TLS with this Secret, via an Ingress `tls` block. Leave empty when
+    # the controller obtains certificates itself.
     secretName: ""
