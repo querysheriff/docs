@@ -7,12 +7,17 @@ image:
   # Pin to a released tag in production rather than the chart appVersion default.
   # backend.image.tag / frontend.image.tag override per component.
 
+# The backend's own Postgres store. Point at an EMPTY database whose role can
+# CREATE tables and partitions.
+secret:
+  create: true
+  values:
+    DATABASE_URL: "postgres://pgdozor:CHANGE_ME@my-postgres:5432/pgdozor?sslmode=require"
+  # To use a Secret you created yourself instead of a chart-managed one:
+  # create: false
+  # name: pgdozor-db
+
 backend:
-  # The backend's own Postgres store. Point at an EMPTY database whose role can
-  # CREATE tables and partitions. Prefer existingSecret over an inline DSN.
-  databaseUrl: "postgres://pgdozor:CHANGE_ME@my-postgres:5432/pgdozor?sslmode=require"
-  # existingSecret: pgdozor-db
-  # existingSecretKey: DATABASE_URL
   cookieSecure: true
   retentionDays: 30
   replicas: 2

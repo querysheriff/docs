@@ -1,66 +1,100 @@
+# Default values for pgdozor.
+
+# -- Override the chart name used in resource names.
 nameOverride: ""
+# -- Override the full resource name prefix (release name + chart name).
 fullnameOverride: ""
 
 image:
+  # -- Container registry and org that backend/frontend images are pulled from.
   registry: ghcr.io/pgdozor
+  # -- Image pull policy for all containers.
   pullPolicy: IfNotPresent
+  # -- Image pull secrets for a private registry.
   pullSecrets: []
 
 serviceAccount:
+  # -- Specifies whether a service account should be created.
   create: true
+  # -- The name of the service account to use.
   name: ""
+  # -- Annotations to add to the service account.
   annotations: {}
+
+secret:
+  # -- Specifies whether a secret should be created.
+  create: true
+  # -- The name of the secret to load environment variables from.
+  name: ""
+  # -- Values to initialize the Secret with.
+  values: {}
+  #   DATABASE_URL: backend_postgres_url
 
 backend:
   image:
+    # -- Backend image repository, appended to image.registry.
     repository: backend
+    # -- Backend image tag. Empty uses the chart appVersion.
     tag: ""
+  # -- Number of backend replicas.
   replicas: 1
 
-  # The backend's OWN Postgres store connection. Provide ONE of:
-  #   databaseUrl   — a literal DSN (stored in a chart-managed Secret), or
-  #   existingSecret — the name of a pre-existing Secret holding the DSN.
-  databaseUrl: ""
-  existingSecret: ""
-  existingSecretKey: DATABASE_URL
-
-  # Empty derives the value from the ingress origin (recommended, single-host mode).
+  # -- Allowed CORS origins for the API. Empty derives it from the ingress origin (recommended, single-host mode).
   corsAllowedOrigins: ""
+  # -- Send the session cookie only over HTTPS. Keep true unless testing over plain HTTP.
   cookieSecure: true
+  # -- Days of monitoring data to retain before pruning.
   retentionDays: 30
 
+  # -- CPU/memory requests and limits for the backend container.
   resources: {}
+  # -- Annotations added to backend pods.
   podAnnotations: {}
+  # -- Node selector for scheduling backend pods.
   nodeSelector: {}
+  # -- Tolerations for scheduling backend pods.
   tolerations: []
+  # -- Affinity rules for scheduling backend pods.
   affinity: {}
 
 frontend:
   image:
+    # -- Frontend image repository, appended to image.registry.
     repository: frontend
+    # -- Frontend image tag. Empty uses the chart appVersion.
     tag: ""
+  # -- Number of frontend replicas.
   replicas: 1
 
-  # Empty derives the value from the ingress origin (recommended, single-host mode).
-  # The browser calls this URL directly, so it must be reachable from clients.
+  # -- Backend URL the browser calls. Empty derives it from the ingress origin (recommended, single-host mode).
   publicApiUrl: ""
 
+  # -- CPU/memory requests and limits for the frontend container.
   resources: {}
+  # -- Annotations added to frontend pods.
   podAnnotations: {}
+  # -- Node selector for scheduling frontend pods.
   nodeSelector: {}
+  # -- Tolerations for scheduling frontend pods.
   tolerations: []
+  # -- Affinity rules for scheduling frontend pods.
   affinity: {}
 
 migrations:
+  # -- Run schema migrations as an init container before the backend starts.
   enabled: true
 
 ingress:
+  # -- Create an Ingress for the app.
   enabled: true
+  # -- IngressClass name (e.g. nginx). Empty uses the cluster default.
   className: ""
+  # -- Annotations added to the Ingress (e.g. cert-manager issuer).
   annotations: {}
+  # -- Public hostname for the dashboard (and the API in single-host mode).
   host: pgdozor.local
 
-  # Single-host mode routes these Connect service prefixes to the backend; every
+  # -- Connect service prefixes routed to the backend in single-host mode; every
   # other path goes to the frontend. Adjust only if the proto service set changes.
   rpcServices:
     - ActivityService
@@ -71,13 +105,15 @@ ingress:
     - AdminService
     - AlertService
 
-  # Dual-host mode serves the app on `host` and the API on `apiHost`. The two
-  # MUST share one registrable domain (subdomains) or the SameSite=Lax session
-  # cookie will not flow from app to API.
   dualHost:
+    # -- Serve the app on `host` and the API on `apiHost`. Both MUST share one
+    # registrable domain (subdomains) or the SameSite=Lax session cookie will not flow.
     enabled: false
+    # -- API hostname in dual-host mode.
     apiHost: ""
 
   tls:
+    # -- Serve the ingress over HTTPS.
     enabled: false
+    # -- Name of the TLS Secret. Empty defaults to <fullname>-tls.
     secretName: ""

@@ -150,7 +150,7 @@ helm install pgdozor ./deploy/helm/pgdozor \
   --set ingress.className=nginx \
   --set ingress.tls.enabled=true \
   --set ingress.annotations."cert-manager\.io/cluster-issuer"=letsencrypt-prod \
-  --set backend.databaseUrl='postgres://pgdozor:PASS@db-host:5432/pgdozor?sslmode=require'
+  --set secret.values.DATABASE_URL='postgres://pgdozor:PASS@db-host:5432/pgdozor?sslmode=require'
 ```
 
 Prefer a pre-created Secret over an inline DSN in production:
@@ -159,7 +159,7 @@ Prefer a pre-created Secret over an inline DSN in production:
 kubectl create secret generic pgdozor-db --from-literal=DATABASE_URL='postgres://…'
 helm install pgdozor ./deploy/helm/pgdozor \
   --set ingress.host=pgdozor.example.com --set ingress.tls.enabled=true \
-  --set backend.existingSecret=pgdozor-db
+  --set secret.create=false --set secret.name=pgdozor-db
 ```
 
 Or copy `deploy/helm/pgdozor/values.example.yaml`, edit it, and

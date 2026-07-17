@@ -49,20 +49,8 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- printf "%s/%s:%s" .Values.image.registry .Values.frontend.image.repository (.Values.frontend.image.tag | default .Chart.AppVersion) -}}
 {{- end -}}
 
-{{- define "pgdozor.databaseSecretName" -}}
-{{- if .Values.backend.existingSecret -}}
-{{- .Values.backend.existingSecret -}}
-{{- else -}}
-{{- printf "%s-backend" (include "pgdozor.fullname" .) -}}
-{{- end -}}
-{{- end -}}
-
-{{- define "pgdozor.databaseSecretKey" -}}
-{{- if .Values.backend.existingSecret -}}
-{{- .Values.backend.existingSecretKey -}}
-{{- else -}}
-DATABASE_URL
-{{- end -}}
+{{- define "pgdozor.secretName" -}}
+{{- default (printf "%s-backend" (include "pgdozor.fullname" .)) .Values.secret.name -}}
 {{- end -}}
 
 {{- define "pgdozor.scheme" -}}

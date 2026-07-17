@@ -28,18 +28,17 @@ spec:
       {{- end }}
       securityContext:
         runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
       {{- if .Values.migrations.enabled }}
       initContainers:
         - name: migrate
           image: {{ include "pgdozor.backendImage" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command: ["/pgdozor-migrate"]
-          env:
-            - name: DATABASE_URL
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "pgdozor.databaseSecretName" . }}
-                  key: {{ include "pgdozor.databaseSecretKey" . }}
+          envFrom:
+            - secretRef:
+                name: {{ include "pgdozor.secretName" . }}
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -53,14 +52,12 @@ spec:
           ports:
             - name: http
               containerPort: 3000
+          envFrom:
+            - secretRef:
+                name: {{ include "pgdozor.secretName" . }}
           env:
             - name: LISTEN_ADDR
               value: "0.0.0.0:3000"
-            - name: DATABASE_URL
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "pgdozor.databaseSecretName" . }}
-                  key: {{ include "pgdozor.databaseSecretKey" . }}
             - name: CORS_ALLOWED_ORIGINS
               value: {{ include "pgdozor.corsOrigins" . | quote }}
             - name: COOKIE_SECURE
