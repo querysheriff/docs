@@ -53,34 +53,12 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- default (printf "%s-backend" (include "pgdozor.fullname" .)) .Values.secret.name -}}
 {{- end -}}
 
-{{- define "pgdozor.scheme" -}}
-{{- if .Values.ingress.tls.enabled -}}https{{- else -}}http{{- end -}}
+{{- define "pgdozor.origin" -}}
+{{- $scheme := ternary "https" "http" .Values.ingress.tls.enabled -}}
+{{- $host := required "ingress.host is required" .Values.ingress.host -}}
+{{- printf "%s://%s" $scheme $host -}}
 {{- end -}}
 
-{{- define "pgdozor.appOrigin" -}}
-{{- printf "%s://%s" (include "pgdozor.scheme" .) .Values.ingress.host -}}
-{{- end -}}
-
-{{- define "pgdozor.apiOrigin" -}}
-{{- if .Values.ingress.dualHost.enabled -}}
-{{- printf "%s://%s" (include "pgdozor.scheme" .) .Values.ingress.dualHost.apiHost -}}
-{{- else -}}
-{{- include "pgdozor.appOrigin" . -}}
-{{- end -}}
-{{- end -}}
-
-{{- define "pgdozor.publicApiUrl" -}}
-{{- if .Values.frontend.publicApiUrl -}}
-{{- .Values.frontend.publicApiUrl -}}
-{{- else -}}
-{{- include "pgdozor.apiOrigin" . -}}
-{{- end -}}
-{{- end -}}
-
-{{- define "pgdozor.corsOrigins" -}}
-{{- if .Values.backend.corsAllowedOrigins -}}
-{{- .Values.backend.corsAllowedOrigins -}}
-{{- else -}}
-{{- include "pgdozor.appOrigin" . -}}
-{{- end -}}
+{{- define "pgdozor.apiUrl" -}}
+{{- printf "%s/api" (include "pgdozor.origin" .) -}}
 {{- end -}}

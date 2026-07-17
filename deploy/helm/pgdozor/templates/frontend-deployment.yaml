@@ -42,8 +42,6 @@ spec:
               value: "0.0.0.0"
             - name: PORT
               value: "3000"
-            - name: PUBLIC_API_URL
-              value: {{ include "pgdozor.publicApiUrl" . | quote }}
           livenessProbe:
             httpGet:
               path: /

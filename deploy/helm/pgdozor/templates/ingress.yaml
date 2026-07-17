@@ -1,7 +1,4 @@
-{{- if .Values.ingress.enabled }}
 {{- $fullname := include "pgdozor.fullname" . }}
-{{- $backendSvc := printf "%s-backend" $fullname }}
-{{- $frontendSvc := printf "%s-frontend" $fullname }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -20,52 +17,23 @@ spec:
   tls:
     - hosts:
         - {{ .Values.ingress.host | quote }}
-        {{- if .Values.ingress.dualHost.enabled }}
-        - {{ .Values.ingress.dualHost.apiHost | quote }}
-        {{- end }}
       secretName: {{ .Values.ingress.tls.secretName | default (printf "%s-tls" $fullname) }}
   {{- end }}
   rules:
-    {{- if .Values.ingress.dualHost.enabled }}
-    - host: {{ required "ingress.dualHost.apiHost is required in dual-host mode" .Values.ingress.dualHost.apiHost | quote }}
+    - host: {{ required "ingress.host is required" .Values.ingress.host | quote }}
       http:
         paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $fullname }}-backend
+                port:
+                  number: 3000
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: {{ $backendSvc }}
+                name: {{ $fullname }}-frontend
                 port:
                   number: 3000
-    - host: {{ .Values.ingress.host | quote }}
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: {{ $frontendSvc }}
-                port:
-                  number: 3000
-    {{- else }}
-    - host: {{ .Values.ingress.host | quote }}
-      http:
-        paths:
-          {{- range .Values.ingress.rpcServices }}
-          - path: /pgdozor.v1.{{ . }}
-            pathType: Prefix
-            backend:
-              service:
-                name: {{ $backendSvc }}
-                port:
-                  number: 3000
-          {{- end }}
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: {{ $frontendSvc }}
-                port:
-                  number: 3000
-    {{- end }}
-{{- end }}

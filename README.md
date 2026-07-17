@@ -89,7 +89,7 @@ the Postgres DSN (see `/etc/pgdozor-collector.yml.example` for the full schema):
 
 ```yaml
 backend:
-  url: https://backend.example.com:3000
+  url: https://pgdozor.example.com/api
   token: pgdc_CHANGE_ME
 
 postgres: postgresql://pgdozor_collector@localhost:5432/postgres
@@ -141,8 +141,9 @@ needed.
 
 #### 1. Install
 
-Single-host mode (recommended): the dashboard and the Connect API share one
-origin, so there is no CORS to configure and the session cookie flows cleanly.
+The dashboard and the Connect API share one hostname: `/api` routes to the
+backend, everything else to the frontend. One origin means no CORS to configure
+and the session cookie flows cleanly.
 
 ```sh
 helm install pgdozor ./deploy/helm/pgdozor \
@@ -173,8 +174,8 @@ backend image) before the backend starts — no manual migrate step.
 - Open `https://<host>` and log in. The **first** successful login bootstraps the
   super admin (choose the email + password).
 - As super admin, go to **Admin → Collectors** and create a collector token. Give
-  each collector its `pgdc_` token and point `backend.url` at
-  `https://<host>` (single-host) — the collector setup above covers the rest.
+  each collector its `pgdc_` token and point `backend.url` at `https://<host>/api`
+  — the collector setup above covers the rest.
 
 #### 3. Upgrade
 
@@ -187,13 +188,17 @@ production rather than relying on the chart default.
 
 #### Ingress topology
 
-- **Single-host (default):** one hostname; Connect service paths
-  (`/pgdozor.v1.*`) route to the backend, everything else to the frontend.
-  `PUBLIC_API_URL` and `CORS_ALLOWED_ORIGINS` are derived automatically.
-- **Dual-host:** set `ingress.dualHost.enabled=true` and
-  `ingress.dualHost.apiHost=api.pgdozor.example.com`. The app host and API host
-  **must share one registrable domain** (subdomains) — otherwise the `SameSite=Lax`
-  session cookie will not flow from the dashboard to the API.
+Everything is served from the single `ingress.host`, via exactly two path rules:
 
-The frontend reads `PUBLIC_API_URL` at **runtime** (adapter-node), so the backend
-URL is set at deploy time via the chart — no image rebuild to re-point it.
+| Path   | Goes to  |
+| ------ | -------- |
+| `/api` | backend  |
+| `/`    | frontend |
+
+The backend mounts every Connect service under `/api`, so this holds no matter
+which services the proto declares — adding an RPC service never touches the chart.
+Because the dashboard and the API share an origin, the browser makes no
+cross-origin requests: the frontend calls `/api` relatively (no `PUBLIC_API_URL`
+needed) and the `SameSite=Lax` session cookie flows on its own.
+`CORS_ALLOWED_ORIGINS` is still set from `ingress.host` for the benefit of
+non-browser clients.

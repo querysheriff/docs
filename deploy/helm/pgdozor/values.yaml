@@ -39,8 +39,6 @@ backend:
   # -- Number of backend replicas.
   replicas: 1
 
-  # -- Allowed CORS origins for the API. Empty derives it from the ingress origin (recommended, single-host mode).
-  corsAllowedOrigins: ""
   # -- Send the session cookie only over HTTPS. Keep true unless testing over plain HTTP.
   cookieSecure: true
   # -- Days of monitoring data to retain before pruning.
@@ -66,9 +64,6 @@ frontend:
   # -- Number of frontend replicas.
   replicas: 1
 
-  # -- Backend URL the browser calls. Empty derives it from the ingress origin (recommended, single-host mode).
-  publicApiUrl: ""
-
   # -- CPU/memory requests and limits for the frontend container.
   resources: {}
   # -- Annotations added to frontend pods.
@@ -85,32 +80,12 @@ migrations:
   enabled: true
 
 ingress:
-  # -- Create an Ingress for the app.
-  enabled: true
+  # -- Public hostname serving the dashboard and, under /api, the Connect API.
+  host: pgdozor.local
   # -- IngressClass name (e.g. nginx). Empty uses the cluster default.
   className: ""
   # -- Annotations added to the Ingress (e.g. cert-manager issuer).
   annotations: {}
-  # -- Public hostname for the dashboard (and the API in single-host mode).
-  host: pgdozor.local
-
-  # -- Connect service prefixes routed to the backend in single-host mode; every
-  # other path goes to the frontend. Adjust only if the proto service set changes.
-  rpcServices:
-    - ActivityService
-    - StatementService
-    - LogService
-    - HealthService
-    - AuthService
-    - AdminService
-    - AlertService
-
-  dualHost:
-    # -- Serve the app on `host` and the API on `apiHost`. Both MUST share one
-    # registrable domain (subdomains) or the SameSite=Lax session cookie will not flow.
-    enabled: false
-    # -- API hostname in dual-host mode.
-    apiHost: ""
 
   tls:
     # -- Serve the ingress over HTTPS.
