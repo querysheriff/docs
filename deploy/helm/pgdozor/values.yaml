@@ -28,27 +28,46 @@ backend:
     repository: backend
     # -- Backend image tag. Required; backend and frontend release independently.
     tag: ""
-  # -- Number of backend replicas.
-  replicas: 1
 
-  # -- Days of monitoring data to retain before pruning.
-  retentionDays: 30
+  api:
+    # -- Number of API replicas.
+    replicas: 1
 
-  # -- CPU/memory requests and limits for the backend container.
-  resources:
-    requests:
-      cpu: 100m
-      memory: 256Mi
-    limits:
-      memory: 512Mi
-  # -- Annotations added to backend pods.
-  podAnnotations: {}
-  # -- Node selector for scheduling backend pods.
-  nodeSelector: {}
-  # -- Tolerations for scheduling backend pods.
-  tolerations: []
-  # -- Affinity rules for scheduling backend pods.
-  affinity: {}
+    # -- CPU/memory requests and limits for the api container.
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        memory: 512Mi
+    # -- Annotations added to api pods.
+    podAnnotations: {}
+    # -- Node selector for scheduling api pods.
+    nodeSelector: {}
+    # -- Tolerations for scheduling api pods.
+    tolerations: []
+    # -- Affinity rules for scheduling api pods.
+    affinity: {}
+
+  jobs:
+    # -- Days of monitoring data to retain before pruning.
+    retentionDays: 30
+
+    # -- CPU/memory requests and limits for the jobs container.
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        memory: 256Mi
+    # -- Annotations added to jobs pods.
+    podAnnotations: {}
+    # -- Node selector for scheduling the jobs pod.
+    nodeSelector: {}
+    # -- Tolerations for scheduling the jobs pod.
+    tolerations: []
+    # -- Affinity rules for scheduling the jobs pod.
+    affinity: {}
 
 frontend:
   image:
@@ -75,10 +94,6 @@ frontend:
   # -- Affinity rules for scheduling frontend pods.
   affinity: {}
 
-migrations:
-  # -- Run schema migrations as an init container before the backend starts.
-  enabled: true
-
 ingress:
   # -- Public hostname serving the dashboard and, under /api, the Connect API. Required.
   host: ""
@@ -88,9 +103,7 @@ ingress:
   annotations: {}
 
   tls:
-    # -- The site is served over HTTPS. Drives the URL scheme (dashboard, API, CORS)
-    # and the secure session cookie. Turn off only for plain-HTTP testing.
+    # -- The site is served over HTTPS.
     enabled: true
-    # -- Terminate TLS with this Secret, via an Ingress `tls` block. Leave empty when
-    # the controller obtains certificates itself.
+    # -- Terminate TLS with this Secret. Leave empty when the controller obtains certificates itself.
     secretName: ""

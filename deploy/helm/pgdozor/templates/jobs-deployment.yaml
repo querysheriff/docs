@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "pgdozor.fullname" . }}-jobs
+  labels:
+    {{- include "pgdozor.labels" . | nindent 4 }}
+    app.kubernetes.io/component: jobs
+    app.kubernetes.io/version: {{ .Values.backend.image.tag | quote }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "pgdozor.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: jobs
+  template:
+    metadata:
+      labels:
+        {{- include "pgdozor.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: jobs
+      {{- with .Values.backend.jobs.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+      containers:
+        - name: jobs
+          image: {{ include "pgdozor.backendImage" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["/pgdozor-jobs"]
+          envFrom:
+            - secretRef:
+                name: {{ include "pgdozor.secretName" . }}
+          env:
+            - name: RETENTION_DAYS
+              value: {{ .Values.backend.jobs.retentionDays | quote }}
+          {{- with .Values.backend.jobs.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+      {{- with .Values.backend.jobs.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.backend.jobs.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.backend.jobs.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

@@ -27,7 +27,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: {{ $fullname }}-backend
+                name: {{ $fullname }}-api
                 port:
                   name: http
           - path: /

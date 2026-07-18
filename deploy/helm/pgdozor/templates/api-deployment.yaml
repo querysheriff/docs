@@ -1,23 +1,23 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "pgdozor.fullname" . }}-backend
+  name: {{ include "pgdozor.fullname" . }}-api
   labels:
     {{- include "pgdozor.labels" . | nindent 4 }}
-    app.kubernetes.io/component: backend
+    app.kubernetes.io/component: api
     app.kubernetes.io/version: {{ .Values.backend.image.tag | quote }}
 spec:
-  replicas: {{ .Values.backend.replicas }}
+  replicas: {{ .Values.backend.api.replicas }}
   selector:
     matchLabels:
       {{- include "pgdozor.selectorLabels" . | nindent 6 }}
-      app.kubernetes.io/component: backend
+      app.kubernetes.io/component: api
   template:
     metadata:
       labels:
         {{- include "pgdozor.selectorLabels" . | nindent 8 }}
-        app.kubernetes.io/component: backend
-      {{- with .Values.backend.podAnnotations }}
+        app.kubernetes.io/component: api
+      {{- with .Values.backend.api.podAnnotations }}
       annotations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
@@ -30,23 +30,8 @@ spec:
         runAsNonRoot: true
         runAsUser: 65532
         runAsGroup: 65532
-      {{- if .Values.migrations.enabled }}
-      initContainers:
-        - name: migrate
-          image: {{ include "pgdozor.backendImage" . }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ["/pgdozor-migrate"]
-          envFrom:
-            - secretRef:
-                name: {{ include "pgdozor.secretName" . }}
-          securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop: ["ALL"]
-      {{- end }}
       containers:
-        - name: backend
+        - name: api
           image: {{ include "pgdozor.backendImage" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
@@ -62,8 +47,6 @@ spec:
               value: {{ include "pgdozor.origin" . | quote }}
             - name: COOKIE_SECURE
               value: {{ .Values.ingress.tls.enabled | quote }}
-            - name: RETENTION_DAYS
-              value: {{ .Values.backend.retentionDays | quote }}
           livenessProbe:
             httpGet:
               path: /healthz
@@ -72,7 +55,7 @@ spec:
             httpGet:
               path: /readyz
               port: http
-          {{- with .Values.backend.resources }}
+          {{- with .Values.backend.api.resources }}
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
@@ -81,15 +64,15 @@ spec:
             readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
-      {{- with .Values.backend.nodeSelector }}
+      {{- with .Values.backend.api.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.backend.tolerations }}
+      {{- with .Values.backend.api.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.backend.affinity }}
+      {{- with .Values.backend.api.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}

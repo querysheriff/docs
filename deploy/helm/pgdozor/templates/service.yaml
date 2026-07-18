@@ -1,4 +1,4 @@
-{{- range $component := list "backend" "frontend" }}
+{{- range $component := list "api" "frontend" }}
 ---
 apiVersion: v1
 kind: Service
