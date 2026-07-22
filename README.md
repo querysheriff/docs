@@ -11,8 +11,8 @@ The collector runs on the PostgreSQL host as a Debian package managed by `system
 Create the monitoring role:
 
 ```sql
-CREATE USER pgdozor_collector WITH PASSWORD 'CHANGE_ME' CONNECTION LIMIT 5;
-GRANT pg_monitor TO pgdozor_collector;
+CREATE USER querysheriff_collector WITH PASSWORD 'CHANGE_ME' CONNECTION LIMIT 5;
+GRANT pg_monitor TO querysheriff_collector;
 ```
 
 Configure `postgresql.conf`:
@@ -70,59 +70,59 @@ Log permissions should be handled by the collector package:
 #### 2. Install the collector
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/pgdozor/collector/master/scripts/install.sh | sudo sh
+curl -fsSL https://raw.githubusercontent.com/querysheriff/collector/master/scripts/install.sh | sudo sh
 ```
 
 This installs the latest `.deb` from GitHub Releases and sets up:
 
-- the binary at `/usr/bin/pgdozor-collector`,
-- a dedicated `pgdozor-collector` system user (added to the `postgres` group),
-- the systemd unit `pgdozor-collector.service` (enabled to start on boot),
-- a config seeded at `/etc/pgdozor-collector.yml` (`root:pgdozor-collector`, `0640`).
+- the binary at `/usr/bin/querysheriff-collector`,
+- a dedicated `querysheriff-collector` system user (added to the `postgres` group),
+- the systemd unit `querysheriff-collector.service` (enabled to start on boot),
+- a config seeded at `/etc/querysheriff-collector.yml` (`root:querysheriff-collector`, `0640`).
 
 Pin a version with `VERSION=1.2.3 curl … | sudo sh`.
 
 #### 3. Configure the service
 
-Edit `/etc/pgdozor-collector.yml` — set the backend URL, the collector token, and the Postgres DSN (see `/etc/pgdozor-collector.yml.example` for the full schema):
+Edit `/etc/querysheriff-collector.yml` — set the backend URL, the collector token, and the Postgres DSN (see `/etc/querysheriff-collector.yml.example` for the full schema):
 
 ```yaml
 backend:
-  url: https://pgdozor.example.com/api
-  token: pgdc_CHANGE_ME
+  url: https://querysheriff.example.com/api
+  token: qsc_CHANGE_ME
 
-postgres: postgresql://pgdozor_collector@localhost:5432/postgres
+postgres: postgresql://querysheriff_collector@localhost:5432/postgres
 
 logs:
   path: /var/log/postgresql
   delete_rotated: true
 ```
 
-The config is `root:pgdozor-collector 0640` — it holds the token and DB password, so keep it out of world-readable reach.
+The config is `root:querysheriff-collector 0640` — it holds the token and DB password, so keep it out of world-readable reach.
 
 #### 4. Start and verify
 
 ```sh
-sudo systemctl start pgdozor-collector
-systemctl status pgdozor-collector
-journalctl -u pgdozor-collector -f
+sudo systemctl start querysheriff-collector
+systemctl status querysheriff-collector
+journalctl -u querysheriff-collector -f
 ```
 
-A healthy start logs `pgdozor collector started` with the detected Postgres version. Apply config changes with `systemctl restart pgdozor-collector`.
+A healthy start logs `querysheriff collector started` with the detected Postgres version. Apply config changes with `systemctl restart querysheriff-collector`.
 
 #### Upgrade / uninstall
 
 ```sh
 # upgrade: re-run the installer — it pulls the newest release; your config is kept
-curl -fsSL https://raw.githubusercontent.com/pgdozor/collector/main/scripts/install.sh | sudo sh
+curl -fsSL https://raw.githubusercontent.com/querysheriff/collector/main/scripts/install.sh | sudo sh
 
-sudo apt-get remove pgdozor-collector   # keep config and state
-sudo apt-get purge  pgdozor-collector   # also remove config, state, and the user
+sudo apt-get remove querysheriff-collector   # keep config and state
+sudo apt-get purge  querysheriff-collector   # also remove config, state, and the user
 ```
 
 ### Backend & Frontend (Kubernetes)
 
-The backend and frontend deploy together to Kubernetes via one Helm chart (`deploy/helm/pgdozor`). Prebuilt multi-arch images are published to GHCR (`ghcr.io/pgdozor/backend`, `ghcr.io/pgdozor/frontend`), so no local build is needed.
+The backend and frontend deploy together to Kubernetes via one Helm chart (`deploy/helm/querysheriff`). Prebuilt multi-arch images are published to GHCR (`ghcr.io/querysheriff/backend`, `ghcr.io/querysheriff/frontend`), so no local build is needed.
 
 #### Prerequisites
 
@@ -135,7 +135,7 @@ The backend and frontend deploy together to Kubernetes via one Helm chart (`depl
 The dashboard and the Connect API share one hostname: `/api` routes to the backend, everything else to the frontend.
 
 ```sh
-helm install pgdozor ./deploy/helm/pgdozor -n pgdozor -f my-values.yaml
+helm install querysheriff ./deploy/helm/querysheriff -n querysheriff -f my-values.yaml
 ```
 
 Schema migrations run automatically as an init container (goose, embedded in the backend image) before the backend starts.
@@ -143,12 +143,12 @@ Schema migrations run automatically as an init container (goose, embedded in the
 #### 2. First login and collectors
 
 - Open `https://<host>` and log in. The **first** login bootstraps the super admin (choose the email + password).
-- As super admin, go to **Admin -> Collectors** and create a collector token. Give each collector its `pgdc_` token and point `backend.url` at `https://<host>/api` — the collector setup above covers the rest.
+- As super admin, go to **Admin -> Collectors** and create a collector token. Give each collector its `qsc_` token and point `backend.url` at `https://<host>/api` — the collector setup above covers the rest.
 
 #### 3. Upgrade
 
 ```sh
-helm upgrade pgdozor ./deploy/helm/pgdozor -n pgdozor -f my-values.yaml
+helm upgrade querysheriff ./deploy/helm/querysheriff -n querysheriff -f my-values.yaml
 ```
 
 Bump `backend.image.tag` / `frontend.image.tag` to the released versions you want. The two release independently, so they are set separately and neither has a default.

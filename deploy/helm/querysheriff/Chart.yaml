@@ -1,0 +1,9 @@
+apiVersion: v2
+name: querysheriff
+version: 0.0.1
+type: application
+description: querysheriff backend and frontend
+home: https://github.com/querysheriff
+sources:
+  - https://github.com/querysheriff/backend
+  - https://github.com/querysheriff/frontend

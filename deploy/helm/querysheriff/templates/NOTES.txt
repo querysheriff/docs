@@ -1,0 +1,11 @@
+querysheriff deployed as release "{{ .Release.Name }}".
+
+Backend image:  {{ include "querysheriff.backendImage" . }}
+Frontend image: {{ include "querysheriff.frontendImage" . }}
+
+Dashboard URL:  {{ include "querysheriff.origin" . }}
+Backend API:    {{ include "querysheriff.apiUrl" . }}
+
+First steps:
+  1. Open the dashboard and log in — the FIRST login bootstraps the super admin account (email + password you choose).
+  2. As super admin, create a collector token (Admin -> Collectors). Configure each collector with its `qsc_` token and point its backend.url at {{ include "querysheriff.apiUrl" . }}

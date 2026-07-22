@@ -1,9 +1,9 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ include "pgdozor.fullname" . }}-migrate
+  name: {{ include "querysheriff.fullname" . }}-migrate
   labels:
-    {{- include "pgdozor.labels" . | nindent 4 }}
+    {{- include "querysheriff.labels" . | nindent 4 }}
     app.kubernetes.io/component: migrate
   annotations:
     "helm.sh/hook": pre-install,pre-upgrade
@@ -14,7 +14,7 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "pgdozor.selectorLabels" . | nindent 8 }}
+        {{- include "querysheriff.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: migrate
     spec:
       {{- with .Values.image.pullSecrets }}
@@ -28,12 +28,12 @@ spec:
         runAsGroup: 65532
       containers:
         - name: migrate
-          image: {{ include "pgdozor.backendImage" . }}
+          image: {{ include "querysheriff.backendImage" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ["/pgdozor-migrate"]
+          command: ["/querysheriff-migrate"]
           envFrom:
             - secretRef:
-                name: {{ include "pgdozor.secretName" . }}
+                name: {{ include "querysheriff.secretName" . }}
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

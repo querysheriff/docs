@@ -30,7 +30,7 @@ WITH s AS (
             FROM pg_auth_members m
             JOIN pg_roles grp ON grp.oid = m.roleid
             JOIN pg_roles mem ON mem.oid = m.member
-            WHERE grp.rolname = 'pg_monitor' AND mem.rolname = 'pgdozor_collector'
+            WHERE grp.rolname = 'pg_monitor' AND mem.rolname = 'querysheriff_collector'
         ) AS collector_has_pg_monitor
 )
 SELECT parameter, current_value AS "current", required AS expected, status
@@ -41,7 +41,7 @@ FROM (
         CASE WHEN server_version_num::int BETWEEN 150000 AND 190000 THEN 'OK' ELSE 'FAIL' END AS status
     FROM s
     UNION ALL
-    SELECT 'recommended', 'role', 'pgdozor_collector -> pg_monitor',
+    SELECT 'recommended', 'role', 'querysheriff_collector -> pg_monitor',
         CASE WHEN collector_has_pg_monitor THEN 'granted' ELSE 'missing' END,
         'granted',
         CASE WHEN collector_has_pg_monitor THEN 'OK' ELSE 'FAIL' END

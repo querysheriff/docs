@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "pgdozor.fullname" . }}-frontend
+  name: {{ include "querysheriff.fullname" . }}-frontend
   labels:
-    {{- include "pgdozor.labels" . | nindent 4 }}
+    {{- include "querysheriff.labels" . | nindent 4 }}
     app.kubernetes.io/component: frontend
     app.kubernetes.io/version: {{ .Values.frontend.image.tag | quote }}
 spec:
   replicas: {{ .Values.frontend.replicas }}
   selector:
     matchLabels:
-      {{- include "pgdozor.selectorLabels" . | nindent 6 }}
+      {{- include "querysheriff.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: frontend
   template:
     metadata:
       labels:
-        {{- include "pgdozor.selectorLabels" . | nindent 8 }}
+        {{- include "querysheriff.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: frontend
       {{- with .Values.frontend.podAnnotations }}
       annotations:
@@ -32,7 +32,7 @@ spec:
         runAsGroup: 1000
       containers:
         - name: frontend
-          image: {{ include "pgdozor.frontendImage" . }}
+          image: {{ include "querysheriff.frontendImage" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http

@@ -1,4 +1,4 @@
-# Default values for pgdozor.
+# Default values for querysheriff.
 
 # -- Override the chart name used in resource names.
 nameOverride: ""
@@ -7,7 +7,7 @@ fullnameOverride: ""
 
 image:
   # -- Container registry and org that backend/frontend images are pulled from.
-  registry: ghcr.io/pgdozor
+  registry: ghcr.io/querysheriff
   # -- Image pull policy for all containers.
   pullPolicy: IfNotPresent
   # -- Image pull secrets for a private registry.
@@ -20,7 +20,7 @@ secret:
   name: ""
   # -- Values to initialize the Secret with. DATABASE_URL is required by the backend.
   values: {}
-  #   DATABASE_URL: postgresql://user:password@host:5432/pgdozor
+  #   DATABASE_URL: postgresql://user:password@host:5432/querysheriff
 
 backend:
   image:

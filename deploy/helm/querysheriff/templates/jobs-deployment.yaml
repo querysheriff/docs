@@ -1,9 +1,9 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "pgdozor.fullname" . }}-jobs
+  name: {{ include "querysheriff.fullname" . }}-jobs
   labels:
-    {{- include "pgdozor.labels" . | nindent 4 }}
+    {{- include "querysheriff.labels" . | nindent 4 }}
     app.kubernetes.io/component: jobs
     app.kubernetes.io/version: {{ .Values.backend.image.tag | quote }}
 spec:
@@ -12,12 +12,12 @@ spec:
     type: Recreate
   selector:
     matchLabels:
-      {{- include "pgdozor.selectorLabels" . | nindent 6 }}
+      {{- include "querysheriff.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: jobs
   template:
     metadata:
       labels:
-        {{- include "pgdozor.selectorLabels" . | nindent 8 }}
+        {{- include "querysheriff.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: jobs
       {{- with .Values.backend.jobs.podAnnotations }}
       annotations:
@@ -34,12 +34,12 @@ spec:
         runAsGroup: 65532
       containers:
         - name: jobs
-          image: {{ include "pgdozor.backendImage" . }}
+          image: {{ include "querysheriff.backendImage" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ["/pgdozor-jobs"]
+          command: ["/querysheriff-jobs"]
           envFrom:
             - secretRef:
-                name: {{ include "pgdozor.secretName" . }}
+                name: {{ include "querysheriff.secretName" . }}
           env:
             - name: RETENTION_DAYS
               value: {{ .Values.backend.jobs.retentionDays | quote }}
