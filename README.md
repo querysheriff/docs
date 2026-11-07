@@ -4,19 +4,7 @@
 
 <h1 align="center">QuerySheriff docs</h1>
 
-<p align="center">
-  <a href="deployment.md">Deployment guide</a> ·
-  <a href="deploy/helm/querysheriff/README.md">Helm chart</a> ·
-  <a href="deployment.md#troubleshooting">Troubleshooting</a>
-</p>
-
-A collector runs on each monitored PostgreSQL server. The backend and dashboard run in Kubernetes and keep their data in PostgreSQL and ClickHouse.
-
-Follow the [deployment guide](deployment.md): prepare PostgreSQL, create two databases, install with Helm, then add a collector on each server. To check a server's settings first:
-
-```sh
-sudo -u postgres psql -X -P pager=off -d postgres < check-postgres-config.sql
-```
+The docs repository has the QuerySheriff [deployment guide](deployment.md) and the Helm chart for the backend and frontend.
 
 | Path | Contents |
 | --- | --- |
