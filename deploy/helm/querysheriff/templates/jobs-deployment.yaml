@@ -41,8 +41,8 @@ spec:
             - secretRef:
                 name: {{ include "querysheriff.secretName" . }}
           env:
-            - name: RETENTION_DAYS
-              value: {{ .Values.backend.jobs.retentionDays | quote }}
+            - name: DASHBOARD_URL
+              value: {{ include "querysheriff.origin" . | quote }}
           {{- with .Values.backend.jobs.resources }}
           resources:
             {{- toYaml . | nindent 12 }}

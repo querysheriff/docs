@@ -1,0 +1,23 @@
+# Minimal values for a deployment at https://querysheriff.example.com.
+# The database URLs live in the existing Secret "querysheriff-backend", not in this file.
+
+ingress:
+  host: querysheriff.example.com
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+  tls:
+    enabled: true
+    secretName: querysheriff-tls
+
+secret:
+  create: false
+  name: querysheriff-backend
+
+backend:
+  image:
+    tag: "0.0.26"
+
+frontend:
+  image:
+    tag: "0.0.21"

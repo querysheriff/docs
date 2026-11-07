@@ -1,0 +1,83 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: querysheriff-clickhouse
+  namespace: querysheriff
+type: Opaque
+stringData:
+  CLICKHOUSE_PASSWORD: CHANGE_ME_CLICKHOUSE
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: querysheriff-clickhouse
+  namespace: querysheriff
+spec:
+  selector:
+    app.kubernetes.io/name: querysheriff-clickhouse
+  ports:
+    - name: native
+      port: 9000
+      targetPort: native
+    - name: http
+      port: 8123
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: querysheriff-clickhouse
+  namespace: querysheriff
+spec:
+  serviceName: querysheriff-clickhouse
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: querysheriff-clickhouse
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: querysheriff-clickhouse
+    spec:
+      terminationGracePeriodSeconds: 120
+      containers:
+        - name: clickhouse
+          image: clickhouse/clickhouse-server:25.12
+          env:
+            - name: CLICKHOUSE_DB
+              value: querysheriff
+            - name: CLICKHOUSE_USER
+              value: querysheriff_backend
+            - name: CLICKHOUSE_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: querysheriff-clickhouse, key: CLICKHOUSE_PASSWORD }
+          ports:
+            - name: native
+              containerPort: 9000
+            - name: http
+              containerPort: 8123
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/clickhouse
+          resources:
+            requests:
+              cpu: "1"
+              memory: 4Gi
+            limits:
+              memory: 8Gi
+          startupProbe:
+            httpGet: { path: /ping, port: http }
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet: { path: /ping, port: http }
+            periodSeconds: 10
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: 100Gi

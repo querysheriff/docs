@@ -1,0 +1,205 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: querysheriff-postgres
+  namespace: querysheriff
+type: Opaque
+stringData:
+  POSTGRES_PASSWORD: CHANGE_ME_SUPERUSER
+  BACKEND_PASSWORD: CHANGE_ME_BACKEND
+  COLLECTOR_PASSWORD: CHANGE_ME_COLLECTOR
+
+  querysheriff-collector.yml: |
+    backend:
+      url: http://querysheriff-api:3000/api
+      token: qsc_CHANGE_ME
+
+    postgres: postgresql://querysheriff_collector:CHANGE_ME_COLLECTOR@127.0.0.1:5432/postgres
+
+    logs:
+      path: /logs
+      delete_rotated: true
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: querysheriff-postgres-init
+  namespace: querysheriff
+data:
+  01-init.sh: |
+    #!/bin/bash
+    set -euo pipefail
+
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname postgres <<-EOSQL
+      CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+
+      CREATE USER querysheriff_backend WITH PASSWORD '${BACKEND_PASSWORD}';
+      CREATE DATABASE querysheriff WITH OWNER querysheriff_backend;
+
+      CREATE USER querysheriff_collector WITH PASSWORD '${COLLECTOR_PASSWORD}' CONNECTION LIMIT 5;
+      GRANT pg_monitor TO querysheriff_collector;
+    EOSQL
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: querysheriff-postgres
+  namespace: querysheriff
+spec:
+  selector:
+    app.kubernetes.io/name: querysheriff-postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: querysheriff-postgres
+  namespace: querysheriff
+spec:
+  serviceName: querysheriff-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: querysheriff-postgres
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: querysheriff-postgres
+    spec:
+      terminationGracePeriodSeconds: 120
+      containers:
+        - name: postgres
+          image: postgres:18
+          args:
+            - postgres
+            - -c
+            - shared_preload_libraries=pg_stat_statements,auto_explain
+            - -c
+            - pg_stat_statements.track=top
+            - -c
+            - pg_stat_statements.max=10000
+            - -c
+            - track_io_timing=on
+            - -c
+            - compute_query_id=on
+            - -c
+            - track_activity_query_size=4096
+            - -c
+            - logging_collector=on
+            - -c
+            - log_destination=jsonlog
+            - -c
+            - log_directory=/logs
+            - -c
+            - log_filename=postgresql-%Y-%m-%d_%H%M%S.log
+            - -c
+            - log_rotation_age=1d
+            - -c
+            - log_rotation_size=128MB
+            - -c
+            - log_file_mode=0640
+            - -c
+            - log_timezone=UTC
+            - -c
+            - log_min_duration_statement=500
+            - -c
+            - log_lock_waits=on
+            - -c
+            - auto_explain.log_format=json
+            - -c
+            - auto_explain.log_min_duration=500
+            - -c
+            - auto_explain.log_analyze=on
+            - -c
+            - auto_explain.log_buffers=on
+            - -c
+            - auto_explain.log_timing=on
+            - -c
+            - auto_explain.log_triggers=on
+            - -c
+            - auto_explain.log_verbose=on
+            - -c
+            - auto_explain.sample_rate=0.5
+          env:
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: querysheriff-postgres, key: POSTGRES_PASSWORD }
+            - name: BACKEND_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: querysheriff-postgres, key: BACKEND_PASSWORD }
+            - name: COLLECTOR_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: querysheriff-postgres, key: COLLECTOR_PASSWORD }
+          ports:
+            - name: postgres
+              containerPort: 5432
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql
+            - name: logs
+              mountPath: /logs
+            - name: shm
+              mountPath: /dev/shm
+            - name: init
+              mountPath: /docker-entrypoint-initdb.d
+              readOnly: true
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+          startupProbe:
+            exec: { command: [pg_isready, -U, postgres] }
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            exec: { command: [pg_isready, -U, postgres] }
+            periodSeconds: 10
+
+        - name: collector
+          image: ghcr.io/querysheriff/collector:latest
+          securityContext:
+            # postgres's uid in the image: enough to read the 0640 jsonlogs and remove rotated ones.
+            runAsUser: 999
+            runAsGroup: 999
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          volumeMounts:
+            - name: collector-config
+              mountPath: /etc/querysheriff-collector.yml
+              subPath: querysheriff-collector.yml
+              readOnly: true
+            - name: logs
+              mountPath: /logs
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+      volumes:
+        - name: logs
+          emptyDir: { sizeLimit: 2Gi }
+        - name: shm
+          emptyDir: { medium: Memory, sizeLimit: 1Gi }
+        - name: init
+          configMap:
+            name: querysheriff-postgres-init
+            defaultMode: 0755
+        - name: collector-config
+          secret:
+            secretName: querysheriff-postgres
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: 10Gi

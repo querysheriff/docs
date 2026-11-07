@@ -18,9 +18,12 @@ secret:
   create: true
   # -- The name of the secret to load environment variables from.
   name: ""
-  # -- Values to initialize the Secret with. DATABASE_URL is required by the backend.
+  # -- Values to initialize the Secret with. POSTGRES_URL and CLICKHOUSE_URL are both required.
   values: {}
-  #   DATABASE_URL: postgresql://user:password@host:5432/querysheriff
+  #   POSTGRES_URL: postgresql://user:password@host:5432/querysheriff
+  #   CLICKHOUSE_URL: clickhouse://user:password@host:9000/querysheriff
+  #   RETENTION_DAYS: "30"  # optional, days of ClickHouse data kept (1-365)
+  # The chart sets LISTEN_ADDR, CORS_ALLOWED_ORIGINS, COOKIE_SECURE and DASHBOARD_URL from ingress.*.
 
 backend:
   image:
@@ -50,9 +53,6 @@ backend:
     affinity: {}
 
   jobs:
-    # -- Days of monitoring data to retain before pruning.
-    retentionDays: 30
-
     # -- CPU/memory requests and limits for the jobs container.
     resources:
       requests:

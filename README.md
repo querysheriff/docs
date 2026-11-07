@@ -1,155 +1,26 @@
-# Docs
+<p align="center">
+  <img src="https://raw.githubusercontent.com/querysheriff/frontend/master/static/logo.svg" alt="QuerySheriff logo" width="96">
+</p>
 
-## Setup
+<h1 align="center">QuerySheriff docs</h1>
 
-### Collector
+<p align="center">
+  <a href="deployment.md">Deployment guide</a> ·
+  <a href="deploy/helm/querysheriff/README.md">Helm chart</a> ·
+  <a href="deployment.md#troubleshooting">Troubleshooting</a>
+</p>
 
-The collector runs on the PostgreSQL host as a Debian package managed by `systemd`. Supported: Debian 11–13, amd64, PostgreSQL 15–18.
+A collector runs on each monitored PostgreSQL server. The backend and dashboard run in Kubernetes and keep their data in PostgreSQL and ClickHouse.
 
-#### 1. Prepare PostgreSQL
-
-Create the monitoring role:
-
-```sql
-CREATE USER querysheriff_collector WITH PASSWORD 'CHANGE_ME' CONNECTION LIMIT 5;
-GRANT pg_monitor TO querysheriff_collector;
-```
-
-Configure `postgresql.conf`:
-
-```
-# postgresql.conf
-shared_preload_libraries = 'pg_stat_statements,auto_explain'
-pg_stat_statements.track = top
-pg_stat_statements.max = 20000
-track_io_timing = on
-compute_query_id = on
-
-logging_collector = on
-log_destination = 'jsonlog'
-log_directory = '/var/log/postgresql'
-log_filename = 'postgresql-%Y-%m-%d_%H%M%S.log'
-log_rotation_age = '1d'
-log_rotation_size = '128MB'
-log_timezone = 'UTC'
-log_min_duration_statement = 1000
-log_lock_waits = on
-log_file_mode = 0640
-
-auto_explain.log_format = 'json'
-auto_explain.log_min_duration = 1000
-auto_explain.log_analyze = on
-auto_explain.log_buffers = on
-auto_explain.log_timing = on
-auto_explain.log_triggers = on
-auto_explain.log_verbose = on
-auto_explain.sample_rate = 0.5
-```
-
-`shared_preload_libraries` needs a restart; then create the extension:
-
-```
-systemctl restart postgresql
-```
-
-```sql
-CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
-```
-
-Verify the configuration is complete:
+Follow the [deployment guide](deployment.md): prepare PostgreSQL, create two databases, install with Helm, then add a collector on each server. To check a server's settings first:
 
 ```sh
-psql -X -P pager=off "postgresql://postgres:PASSWORD@HOST:5432/postgres" -f check-postgres-config.sql
+sudo -u postgres psql -X -P pager=off -d postgres < check-postgres-config.sql
 ```
 
-Log permissions should be handled by the collector package:
-
-- The collector is added to the `postgres` group, so it can **read** the jsonlogs.
-- The systemd unit holds the `CAP_FOWNER` capability, so it can **delete** rotated jsonlogs.
-
-#### 2. Install the collector
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/querysheriff/collector/master/scripts/install.sh | sudo sh
-```
-
-This installs the latest `.deb` from GitHub Releases and sets up:
-
-- the binary at `/usr/bin/querysheriff-collector`,
-- a dedicated `querysheriff-collector` system user (added to the `postgres` group),
-- the systemd unit `querysheriff-collector.service` (enabled to start on boot),
-- a config seeded at `/etc/querysheriff-collector.yml` (`root:querysheriff-collector`, `0640`).
-
-Pin a version with `VERSION=1.2.3 curl … | sudo sh`.
-
-#### 3. Configure the service
-
-Edit `/etc/querysheriff-collector.yml` — set the backend URL, the collector token, and the Postgres DSN (see `/etc/querysheriff-collector.yml.example` for the full schema):
-
-```yaml
-backend:
-  url: https://querysheriff.example.com/api
-  token: qsc_CHANGE_ME
-
-postgres: postgresql://querysheriff_collector@localhost:5432/postgres
-
-logs:
-  path: /var/log/postgresql
-  delete_rotated: true
-```
-
-The config is `root:querysheriff-collector 0640` — it holds the token and DB password, so keep it out of world-readable reach.
-
-#### 4. Start and verify
-
-```sh
-sudo systemctl start querysheriff-collector
-systemctl status querysheriff-collector
-journalctl -u querysheriff-collector -f
-```
-
-A healthy start logs `querysheriff collector started` with the detected Postgres version. Apply config changes with `systemctl restart querysheriff-collector`.
-
-#### Upgrade / uninstall
-
-```sh
-# upgrade: re-run the installer — it pulls the newest release; your config is kept
-curl -fsSL https://raw.githubusercontent.com/querysheriff/collector/main/scripts/install.sh | sudo sh
-
-sudo apt-get remove querysheriff-collector   # keep config and state
-sudo apt-get purge  querysheriff-collector   # also remove config, state, and the user
-```
-
-### Backend & Frontend (Kubernetes)
-
-The backend and frontend deploy together to Kubernetes via one Helm chart (`deploy/helm/querysheriff`). Prebuilt multi-arch images are published to GHCR (`ghcr.io/querysheriff/backend`, `ghcr.io/querysheriff/frontend`), so no local build is needed.
-
-#### Prerequisites
-
-- A Kubernetes cluster with an ingress controller (e.g. ingress-nginx).
-- An **empty** PostgreSQL database for the backend's own storage, reachable from the cluster. This is **separate** from the databases being monitored.
-- A DNS record pointing at the ingress, and TLS.
-
-#### 1. Install
-
-The dashboard and the Connect API share one hostname: `/api` routes to the backend, everything else to the frontend.
-
-```sh
-helm install querysheriff ./deploy/helm/querysheriff -n querysheriff -f my-values.yaml
-```
-
-Schema migrations run automatically as an init container (goose, embedded in the backend image) before the backend starts.
-
-#### 2. First login and collectors
-
-- Open `https://<host>` and log in. The **first** login bootstraps the super admin (choose the email + password).
-- As super admin, go to **Admin -> Collectors** and create a collector token. Give each collector its `qsc_` token and point `backend.url` at `https://<host>/api` — the collector setup above covers the rest.
-
-#### 3. Upgrade
-
-```sh
-helm upgrade querysheriff ./deploy/helm/querysheriff -n querysheriff -f my-values.yaml
-```
-
-Bump `backend.image.tag` / `frontend.image.tag` to the released versions you want. The two release independently, so they are set separately and neither has a default.
-
+| Path | Contents |
+| --- | --- |
+| [`deployment.md`](deployment.md) | Deployment, upgrades and troubleshooting |
+| [`check-postgres-config.sql`](check-postgres-config.sql) | Settings check for a monitored server |
+| [`deploy/helm/querysheriff/`](deploy/helm/querysheriff/README.md) | Helm chart for the backend and frontend |
+| [`deploy/k8s/`](deploy/k8s/README.md) | Optional in-cluster PostgreSQL and ClickHouse |
